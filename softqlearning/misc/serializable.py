@@ -5,8 +5,8 @@ import sys
 class Serializable(object):
     """An object that can be pickled.
 
-    Adapted from: https://github.com/rll/rllab/blob/master/
-    rllab/core/serializable.py
+    Code adapted from:
+        https://github.com/rll/rllab/blob/master/rllab/core/serializable.py
     """
     def __init__(self, *args, **kwargs):
         self.__args = args

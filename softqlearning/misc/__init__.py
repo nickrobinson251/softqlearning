@@ -1,2 +1,2 @@
 from .serializable import Serializable
-from .parametised import Parameterised
+from .parameterized import Parameterized

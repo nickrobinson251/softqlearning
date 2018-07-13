@@ -28,8 +28,9 @@ class Parameterized(object):
     set_param_values(**tags)
     flat_to_params(flattened, **tags)
 
-    Adapted from https://github.com/rll/rllab/blob/master/
-    sandbox/rocky/tf/core/parameterized.py
+    Code adapted from:
+        https://github.com/rll/rllab/blob/master/sandbox/rocky/tf/core/
+        parameterized.py
     """
     def __init__(self):
         self._cached_params = {}

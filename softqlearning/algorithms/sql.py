@@ -18,9 +18,6 @@ def assert_shape(tensor, expected_shape):
 class SQL(RLAlgorithm):
     """Soft Q-learning algorithm (SQL).
 
-    Adapted from https://raw.githubusercontent.com/haarnoja/softqlearning/
-    master/softqlearning/algorithms/sql.py
-
     Reference:
         [1] Tuomas Haarnoja, Haoran Tang, Pieter Abbeel, and Sergey Levine,
         "Reinforcement Learning with Deep Energy-Based Policies," International
