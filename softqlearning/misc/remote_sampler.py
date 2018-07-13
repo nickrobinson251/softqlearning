@@ -3,10 +3,7 @@ import ray  # TODO: Add ray to dependencies.
 import tensorflow as tf
 import numpy as np
 
-from rllab.misc.overrides import overrides
-from rllab.misc import logger
-
-from . import tf_utils
+from . import logger, tf_utils
 from .sampler import Sampler, rollout
 
 
@@ -21,7 +18,6 @@ class RemoteSampler(Sampler):
         self._last_path_return = 0
         self._max_path_return = -np.inf
 
-    @overrides
     def initialize(self, env, policy, pool):
         super(RemoteSampler, self).initialize(env, policy, pool)
 

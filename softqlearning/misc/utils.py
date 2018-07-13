@@ -2,7 +2,7 @@ import datetime
 import dateutil.tz
 import os
 
-from rllab.core.serializable import Serializable
+from .serializable import Serializable
 
 
 def timestamp():

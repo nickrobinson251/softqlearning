@@ -1,42 +1,44 @@
 import abc
 import gtimer as gt
-
 import numpy as np
 
-from rllab.misc import logger
-from rllab.algos.base import Algorithm
-
-from softqlearning.misc.utils import deep_clone
-from softqlearning.misc import tf_utils
+from softqlearning.misc import logger
 from softqlearning.misc.sampler import rollouts
+from softqlearning.misc.utils import deep_clone
 
 
-class RLAlgorithm(Algorithm):
+class RLAlgorithm:
     """Abstract RLAlgorithm.
 
     Implements the _train and _evaluate methods to be used
     by classes inheriting from RLAlgorithm.
+
+    ...
+
+    Parameters
+    ----------
+    sampler : Sampler
+        Sampler instance to use for sampling episodes (ReplayBuffer supplied at
+        train time)
+    epoch_length : int (default=1000)
+    eval_n_episodes : int (default=10)
+        Number of rollouts to evaluate
+    eval_render : bool (default=False)
+        Whether or not to render the evaluation environment
+    n_epochs : int (default=1000)
+        Number of epochs to run training
+    n_train_repeat : int (default=1)
+        Number of times to repeat the training for single time step
     """
 
     def __init__(
             self,
             sampler,
-            n_epochs=1000,
-            n_train_repeat=1,
             epoch_length=1000,
             eval_n_episodes=10,
             eval_render=False,
-    ):
-        """
-        Args:
-            n_epochs (`int`): Number of epochs to run the training for.
-            n_train_repeat (`int`): Number of times to repeat the training
-                for single time step.
-            epoch_length (`int`): Epoch length.
-            eval_n_episodes (`int`): Number of rollouts to evaluate.
-            eval_render (`int`): Whether or not to render the evaluation
-                environment.
-        """
+            n_epochs=1000,
+            n_train_repeat=1):
         self.sampler = sampler
 
         self._n_epochs = n_epochs
@@ -48,22 +50,25 @@ class RLAlgorithm(Algorithm):
 
         self.env = None
         self.policy = None
-        self.pool = None
+        self.replay_buffer = None
 
-    def _train(self, env, policy, pool):
+    def _train(self, env, policy, replay_buffer, sess):
         """Perform RL training.
 
-        Args:
-            env (`rllab.Env`): Environment used for training
-            policy (`Policy`): Policy used for training
-            pool (`PoolBase`): Sample pool to add samples to
+        Parameters
+        ----------
+        env : gym.Env
+            Environment used for training
+        policy : Policy
+            Policy used for training
+        replay_buffer : ReplayBuffer
+            Replay buffer to add samples to
         """
         self._init_training()
-        self.sampler.initialize(env, policy, pool)
-
+        self.sampler.initialize(env, policy, replay_buffer)
         evaluation_env = deep_clone(env) if self._eval_n_episodes else None
 
-        with tf_utils.get_default_session().as_default():
+        with sess.as_default():
             gt.rename_root('RLAlgorithm')
             gt.reset()
             gt.set_def_unique(False)
@@ -80,7 +85,7 @@ class RLAlgorithm(Algorithm):
 
                     for i in range(self._n_train_repeat):
                         self._do_training(
-                            iteration=t + epoch * self._epoch_length,
+                            iteration=t + epoch*self._epoch_length,
                             batch=self.sampler.random_batch())
                     gt.stamp('train')
 
@@ -111,16 +116,17 @@ class RLAlgorithm(Algorithm):
 
     def _evaluate(self, policy, evaluation_env):
         """Perform evaluation for the current policy."""
-
         if self._eval_n_episodes < 1:
             return
 
-        # TODO: max_path_length should be a property of environment.
-        paths = rollouts(evaluation_env, policy, self.sampler._max_path_length,
-                         self._eval_n_episodes)
-
-        total_returns = [path['rewards'].sum() for path in paths]
-        episode_lengths = [len(p['rewards']) for p in paths]
+        # TODO: max_episode_length should be a property of environment.
+        episodes = rollouts(
+            evaluation_env,
+            policy,
+            episode_length=self.sampler._max_episode_length,
+            n_episodes=self._eval_n_episodes)
+        total_returns = [episode['rewards'].sum() for episode in episodes]
+        episode_lengths = [len(episode['rewards']) for episode in episodes]
 
         logger.record_tabular('return-average', np.mean(total_returns))
         logger.record_tabular('return-min', np.min(total_returns))
@@ -131,9 +137,9 @@ class RLAlgorithm(Algorithm):
         logger.record_tabular('episode-length-max', np.max(episode_lengths))
         logger.record_tabular('episode-length-std', np.std(episode_lengths))
 
-        evaluation_env.log_diagnostics(paths)
+        evaluation_env.log_diagnostics(episodes)
         if self._eval_render:
-            evaluation_env.render(paths)
+            evaluation_env.render(episodes)
 
         if self.sampler.batch_ready():
             batch = self.sampler.random_batch()

@@ -1,10 +1,8 @@
 import tensorflow as tf
 import numpy as np
 
-from rllab.core.serializable import Serializable
-
 from softqlearning.misc.nn import MLPFunction
-from softqlearning.misc import tf_utils
+from softqlearning.misc import Serializable, tf_utils
 
 
 class NNVFunction(MLPFunction):

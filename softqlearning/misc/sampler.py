@@ -1,7 +1,7 @@
 import numpy as np
 import time
 
-from rllab.misc import logger
+from . import logger
 
 
 def rollout(env, policy, path_length, render=False, speedup=None):

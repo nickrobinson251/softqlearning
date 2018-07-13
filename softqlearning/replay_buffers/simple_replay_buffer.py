@@ -1,7 +1,6 @@
 import numpy as np
 
-from rllab.core.serializable import Serializable
-
+from softqlearning.misc import Serializable
 from .replay_buffer import ReplayBuffer
 
 

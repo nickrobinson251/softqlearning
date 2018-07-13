@@ -1,7 +1,6 @@
 import tensorflow as tf
 
-from rllab.core.serializable import Serializable
-
+from softqlearning.misc import Serializable
 from softqlearning.misc.nn import feedforward_net
 
 from .nn_policy import NNPolicy

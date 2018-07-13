@@ -1,9 +1,6 @@
 import tensorflow as tf
 
-from rllab.core.serializable import Serializable
-from sandbox.rocky.tf.core.parameterized import Parameterized
-
-from softqlearning.misc import tf_utils
+from softqlearning.misc import Parameterized, Serializable, tf_utils
 
 
 def feedforward_net(inputs,
