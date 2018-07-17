@@ -13,22 +13,21 @@ def rollout(env, policy, path_length, render=False, speedup=None):
 
     observations = np.zeros((path_length + 1, Do))
     actions = np.zeros((path_length, Da))
-    terminals = np.zeros((path_length, ))
+    dones = np.zeros((path_length, ))
     rewards = np.zeros((path_length, ))
     agent_infos = []
     env_infos = []
 
     t = 0
     for t in range(path_length):
-
         action, agent_info = policy.get_action(observation)
-        next_obs, reward, terminal, env_info = env.step(action)
+        next_obs, reward, done, env_info = env.step(action)
 
         agent_infos.append(agent_info)
         env_infos.append(env_info)
 
         actions[t] = action
-        terminals[t] = terminal
+        dones[t] = done
         rewards[t] = reward
         observations[t] = observation
 
@@ -39,7 +38,7 @@ def rollout(env, policy, path_length, render=False, speedup=None):
             time_step = 0.05
             time.sleep(time_step / speedup)
 
-        if terminal:
+        if done:
             break
 
     observations[t + 1] = observation
@@ -48,7 +47,7 @@ def rollout(env, policy, path_length, render=False, speedup=None):
         'observations': observations[:t + 1],
         'actions': actions[:t + 1],
         'rewards': rewards[:t + 1],
-        'terminals': terminals[:t + 1],
+        'dones': dones[:t + 1],
         'next_observations': observations[1:t + 2],
         'agent_infos': agent_infos,
         'env_infos': env_infos
@@ -114,7 +113,7 @@ class SimpleSampler(Sampler):
             self._current_observation = self.env.reset()
 
         action, _ = self.policy.get_action(self._current_observation)
-        next_observation, reward, terminal, info = self.env.step(action)
+        next_observation, reward, done, info = self.env.step(action)
         self._path_length += 1
         self._path_return += reward
         self._total_samples += 1
@@ -123,10 +122,10 @@ class SimpleSampler(Sampler):
             observation=self._current_observation,
             action=action,
             reward=reward,
-            terminal=terminal,
+            done=done,
             next_observation=next_observation)
 
-        if terminal or self._path_length >= self._max_path_length:
+        if done or self._path_length >= self._max_path_length:
             self.policy.reset()
             self._current_observation = self.env.reset()
             self._path_length = 0
