@@ -27,8 +27,9 @@ class SQL(RLAlgorithm):
 
     Parameters
     ----------
-    base_kwargs : dict
-        arguments that are directly passed to the base RLAlgorithm class
+    sampler : Sampler
+        Sampler instance to use for sampling episodes from replay buffer
+        (ReplayBuffer nstance supplied at train time)
     env : gym.Env:
         gym environment object
     replay_buffer : ReplayBuffer
@@ -39,6 +40,11 @@ class SQL(RLAlgorithm):
         A policy function approximator
     discount : float (default=0.99)
         Discount factor gamma
+    epoch_length : int (default=1000)
+    eval_n_episodes : int (default=10)
+        Number of rollouts to evaluate
+    eval_render : bool (default=False)
+        Whether or not to render the evaluation environment
     kernel_fn : function object
         A function object that represents a kernel function
     kernel_n_particles : int (default=16)
@@ -46,6 +52,10 @@ class SQL(RLAlgorithm):
     kernel_update_ratio : float (defualt=0.5)
         Ratio of SVGD particles used forcomputating inner/outer empirical
         expectation
+    n_epochs : int (default=1000)
+        Number of epochs to run training
+    n_train_repeat : int (default=1)
+        Number of times to repeat the training for single time step
     plotter : Plotter (default=None)
         Plotter instance used for visualizing Q-function during training
     policy_lr : float (default=1e-3)
@@ -76,15 +86,20 @@ class SQL(RLAlgorithm):
 
     def __init__(
             self,
-            base_kwargs,
+            sampler,
             env,
             replay_buffer,
             q_function,
             policy,
             discount=0.99,
+            epoch_length=1000,
+            eval_n_episodes=10,
+            eval_render=False,
             kernel_fn=adaptive_isotropic_gaussian_kernel,
             kernel_n_particles=16,
             kernel_update_ratio=0.5,
+            n_epochs=1000,
+            n_train_repeat=1,
             plotter=None,
             policy_lr=1e-3,
             q_function_lr=1e-3,
@@ -96,22 +111,17 @@ class SQL(RLAlgorithm):
             use_saved_policy=False,
             use_saved_qf=False,
             value_n_particles=16):
-        super(SQL, self).__init__(**base_kwargs)
         self.env = env
         self.plotter = plotter
         self.policy = policy
         self.q_function = q_function
         self.replay_buffer = replay_buffer
         self._action_dim = self.env.action_space.n
-        self._create_placeholders()
-        self._create_svgd_update()
-        self._create_target_ops()
-        self._create_td_update()
         self._discount = discount
         self._kernel_fn = kernel_fn
         self._kernel_n_particles = kernel_n_particles
         self._kernel_update_ratio = kernel_update_ratio
-        self._observation_dim = np.prod(self.env.observation_space.low.shape)
+        self._observation_dim = np.prod(self.env.observation_space.shape)
         self._policy_lr = policy_lr
         self._q_function_lr = q_function_lr
         self._qf_target_update_interval = td_target_update_interval
@@ -123,6 +133,18 @@ class SQL(RLAlgorithm):
         self._train_qf = train_qf
         self._training_ops = []
         self._value_n_particles = value_n_particles
+        super(SQL, self).__init__(**dict(
+            sampler=sampler,
+            epoch_length=epoch_length,
+            eval_n_episodes=eval_n_episodes,
+            eval_render=eval_render,
+            n_epochs=n_epochs,
+            n_train_repeat=n_train_repeat))
+
+        self._create_placeholders()
+        self._create_svgd_update()
+        self._create_target_ops()
+        self._create_td_update()
 
         self._sess.run(tf.global_variables_initializer())
 
@@ -159,7 +181,6 @@ class SQL(RLAlgorithm):
 
     def _create_td_update(self):
         """Create a minimization operation for Q-function update."""
-
         with tf.variable_scope('target'):
             # The value of the next state is approximated with uniform samples.
             target_actions = tf.random_uniform(
@@ -177,7 +198,7 @@ class SQL(RLAlgorithm):
             reuse=True)
         assert_shape(self._q_values, [None])
 
-        # Equation 10:
+        # Equation 10: V(s_t) = alpha * log E[ exp(Q(s_t, a') / alpha) / q(a') ]
         next_value = tf.reduce_logsumexp(q_value_targets, axis=1)
         assert_shape(next_value, [None])
 
@@ -185,26 +206,23 @@ class SQL(RLAlgorithm):
         next_value -= tf.log(tf.cast(self._value_n_particles, tf.float32))
         next_value += self._action_dim * np.log(2)
 
-        # \hat Q in Equation 11:
+        # \hat Q in Equation 11: hatQ(s_t, a_t) = r_t + gamma * E[ V(s_{t+1} ]
         ys = tf.stop_gradient(
-            (self._reward_scale * self._rewards_ph + (1 - self._dones_ph)
-             * self._discount * next_value))
+            (self._reward_scale * self._rewards_ph
+             + (1 - self._dones_ph) * self._discount * next_value))
         assert_shape(ys, [None])
 
-        # Equation 11:
-        bellman_residual = 0.5 * tf.reduce_mean((ys - self._q_values)**2)
+        # Equation 11: J(theta) = E[ (hatQ(s_t, a_t) - q(s_t, a_t))^2 / 2 ]
+        self._bellman_residual = 0.5 * tf.reduce_mean((ys - self._q_values)**2)
 
         if self._train_qf:
             td_train_op = tf.train.AdamOptimizer(self._q_function_lr).minimize(
-                loss=bellman_residual,
+                loss=self._bellman_residual,
                 var_list=self.q_function.get_params_internal())
             self._training_ops.append(td_train_op)
 
-        self._bellman_residual = bellman_residual
-
     def _create_svgd_update(self):
         """Create a minimization operation for policy update (SVGD)."""
-
         actions = self.policy.actions_for(
             observations=self._observations_ph,
             n_action_samples=self._kernel_n_particles,
@@ -217,8 +235,8 @@ class SQL(RLAlgorithm):
         # actions, and later split them into two sets: `fixed_actions` are used
         # to evaluate the expectation indexed by `j` and `updated_actions`
         # the expectation indexed by `i`.
-        n_updated_actions = int(
-            self._kernel_n_particles * self._kernel_update_ratio)
+        n_updated_actions = int(self._kernel_n_particles
+                                * self._kernel_update_ratio)
         n_fixed_actions = self._kernel_n_particles - n_updated_actions
 
         fixed_actions, updated_actions = tf.split(
@@ -239,7 +257,6 @@ class SQL(RLAlgorithm):
         squash_correction = tf.reduce_sum(
             tf.log(1 - fixed_actions**2 + EPS), axis=-1)
         log_p = svgd_target_values + squash_correction
-
         grad_log_p = tf.gradients(log_p, fixed_actions)[0]
         grad_log_p = tf.expand_dims(grad_log_p, axis=2)
         grad_log_p = tf.stop_gradient(grad_log_p)
