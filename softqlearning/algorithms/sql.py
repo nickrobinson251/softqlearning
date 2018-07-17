@@ -320,13 +320,23 @@ class SQL(RLAlgorithm):
 
     def _get_feed_dict(self, batch):
         """Construct a TensorFlow feed dictionary from a sample batch."""
-        feed_dict = {
-            self._observations_ph: batch['observations'],
-            self._actions_ph: batch['actions'],
-            self._next_observations_ph: batch['next_observations'],
-            self._rewards_ph: batch['rewards'],
-            self._dones_ph: batch['dones'],
-        }
+        try:
+            # sometimes batch is a dict of numpy.ndarrays
+            feed_dict = {
+                self._observations_ph: batch['observations'],
+                self._actions_ph: batch['actions'],
+                self._next_observations_ph: batch['next_observations'],
+                self._rewards_ph: batch['rewards'],
+                self._dones_ph: batch['dones']}
+        except TypeError:
+            # sometimes batch is a list of namedtuples
+            states, actions, rewards, next_states, dones = zip(*batch)
+            feed_dict = {
+                self._observations_ph: states,
+                self._actions_ph: actions,
+                self._next_observations_ph: next_states,
+                self._rewards_ph: rewards,
+                self._dones_ph: dones}
         return feed_dict
 
     def log_diagnostics(self, batch):
