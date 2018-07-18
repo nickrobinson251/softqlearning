@@ -83,7 +83,7 @@ class Sampler(object):
         raise NotImplementedError
 
     def batch_ready(self):
-        enough_samples = self.replay_buffer.size >= self._min_replay_buffer_size
+        enough_samples = len(self.replay_buffer) >= self._min_replay_buffer_size
         return enough_samples
 
     def random_batch(self):
