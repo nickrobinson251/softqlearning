@@ -5,8 +5,8 @@ from . import logger
 
 
 def rollout(env, policy, path_length, render=False, speedup=None):
-    Da = env.action_space.flat_dim
-    Do = env.observation_space.flat_dim
+    Da = env.action_space.n
+    Do = np.prod(env.observation_space.shape)
 
     observation = env.reset()
 
