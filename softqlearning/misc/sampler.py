@@ -65,35 +65,35 @@ def rollouts(env, policy, path_length, n_paths):
 
 
 class Sampler(object):
-    def __init__(self, max_path_length, min_pool_size, batch_size):
+    def __init__(self, max_path_length, min_replay_buffer_size, batch_size):
         self._max_path_length = max_path_length
-        self._min_pool_size = min_pool_size
+        self._min_replay_buffer_size = min_replay_buffer_size
         self._batch_size = batch_size
 
         self.env = None
         self.policy = None
-        self.pool = None
+        self.replay_buffer = None
 
-    def initialize(self, env, policy, pool):
+    def initialize(self, env, policy, replay_buffer):
         self.env = env
         self.policy = policy
-        self.pool = pool
+        self.replay_buffer = replay_buffer
 
     def sample(self):
         raise NotImplementedError
 
     def batch_ready(self):
-        enough_samples = self.pool.size >= self._min_pool_size
+        enough_samples = self.replay_buffer.size >= self._min_replay_buffer_size
         return enough_samples
 
     def random_batch(self):
-        return self.pool.random_batch(self._batch_size)
+        return self.replay_buffer.random_batch(self._batch_size)
 
     def terminate(self):
         self.env.terminate()
 
     def log_diagnostics(self):
-        logger.record_tabular('pool-size', self.pool.size)
+        logger.record_tabular('replay_buffer-size', self.replay_buffer.size)
 
 
 class SimpleSampler(Sampler):
@@ -118,7 +118,7 @@ class SimpleSampler(Sampler):
         self._path_return += reward
         self._total_samples += 1
 
-        self.pool.add_sample(
+        self.replay_buffer.add_sample(
             observation=self._current_observation,
             action=action,
             reward=reward,
@@ -151,7 +151,7 @@ class DummySampler(Sampler):
     def __init__(self, batch_size, max_path_length):
         super(DummySampler, self).__init__(
             max_path_length=max_path_length,
-            min_pool_size=0,
+            min_replay_buffer_size=0,
             batch_size=batch_size)
 
     def sample(self):
