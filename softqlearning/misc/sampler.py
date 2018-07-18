@@ -9,7 +9,6 @@ def rollout(env, policy, path_length, render=False, speedup=None):
     Do = env.observation_space.flat_dim
 
     observation = env.reset()
-    policy.reset()
 
     observations = np.zeros((path_length + 1, Do))
     actions = np.zeros((path_length, Da))
@@ -126,7 +125,6 @@ class SimpleSampler(Sampler):
             next_observation=next_observation)
 
         if done or self._path_length >= self._max_path_length:
-            self.policy.reset()
             self._current_observation = self.env.reset()
             self._path_length = 0
             self._max_path_return = max(self._max_path_return,
