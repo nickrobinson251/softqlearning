@@ -18,8 +18,8 @@ class RLAlgorithm:
     Parameters
     ----------
     sampler : Sampler
-        Sampler instance to use for sampling episodes (ReplayBuffer supplied at
-        train time)
+        Sampler instance to use for sampling episodes from replay buffer
+        (ReplayBuffer instance supplied at train time)
     epoch_length : int (default=1000)
     eval_n_episodes : int (default=10)
         Number of rollouts to evaluate

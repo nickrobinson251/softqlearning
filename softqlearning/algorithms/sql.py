@@ -27,17 +27,16 @@ class SQL(RLAlgorithm):
 
     Parameters
     ----------
-    sampler : Sampler
-        Sampler instance to use for sampling episodes from replay buffer
-        (ReplayBuffer nstance supplied at train time)
     env : gym.Env:
         gym environment object
-    replay_buffer : ReplayBuffer
-        Replay buffer to add gathered samples to
-    q_function : NNQFunction
-        Q-function approximator
     policy : NNPolicy
         A policy function approximator
+    q_function : NNQFunction
+        Q-function approximator
+    replay_buffer : ReplayBuffer
+        Replay buffer to add gathered samples to
+    sampler : Sampler
+        Sampler instance to use for sampling episodes from replay_buffer
     discount : float (default=0.99)
         Discount factor gamma
     epoch_length : int (default=1000)
@@ -68,6 +67,8 @@ class SQL(RLAlgorithm):
         distribution.
     save_full_state : bool (default=True)
         If true, full algorithm state and replay buffer are saved
+    sess : tensorflow.Session (default=None)
+        Session used to run operations. If None, tf.get_default_session is used
     td_target_update_interval : int (default=1)
         How often to update target network to match the current Q-function
     train_policy : bool (default=True)
@@ -86,11 +87,11 @@ class SQL(RLAlgorithm):
 
     def __init__(
             self,
-            sampler,
             env,
-            replay_buffer,
-            q_function,
             policy,
+            q_function,
+            replay_buffer,
+            sampler,
             discount=0.99,
             epoch_length=1000,
             eval_n_episodes=10,
@@ -105,12 +106,20 @@ class SQL(RLAlgorithm):
             q_function_lr=1e-3,
             reward_scale=1,
             save_full_state=False,
+            sess=None,
             td_target_update_interval=1,
             train_policy=True,
             train_qf=True,
             use_saved_policy=False,
             use_saved_qf=False,
             value_n_particles=16):
+        super(SQL, self).__init__(**dict(
+            sampler=sampler,
+            epoch_length=epoch_length,
+            eval_n_episodes=eval_n_episodes,
+            eval_render=eval_render,
+            n_epochs=n_epochs,
+            n_train_repeat=n_train_repeat))
         self.env = env
         self.plotter = plotter
         self.policy = policy
@@ -127,19 +136,12 @@ class SQL(RLAlgorithm):
         self._qf_target_update_interval = td_target_update_interval
         self._reward_scale = reward_scale
         self._save_full_state = save_full_state
-        self._sess = tf_utils.get_default_session()
+        self._sess = sess if sess else tf_utils.get_default_session()
         self._target_ops = []
         self._train_policy = train_policy
         self._train_qf = train_qf
         self._training_ops = []
         self._value_n_particles = value_n_particles
-        super(SQL, self).__init__(**dict(
-            sampler=sampler,
-            epoch_length=epoch_length,
-            eval_n_episodes=eval_n_episodes,
-            eval_render=eval_render,
-            n_epochs=n_epochs,
-            n_train_repeat=n_train_repeat))
 
         self._create_placeholders()
         self._create_svgd_update()
@@ -305,7 +307,7 @@ class SQL(RLAlgorithm):
 
     # TODO: do not pass, policy, and replay_buffer to `__init__` directly.
     def train(self):
-        self._train(self.env, self.policy, self.replay_buffer)
+        self._train(self.env, self.policy, self.replay_buffer, self._sess)
 
     def _init_training(self):
         self._sess.run(self._target_ops)
