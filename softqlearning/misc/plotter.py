@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 
 
 class QFPolicyPlotter:
-    def __init__(self, qf, policy, obs_lst, default_action, n_samples):
-        self._qf = qf
+    def __init__(self, q_function, policy, obs_lst, default_action, n_samples):
+        self._q_function = q_function
         self._policy = policy
         self._obs_lst = obs_lst
         self._default_action = default_action
@@ -54,7 +54,7 @@ class QFPolicyPlotter:
         actions[:, self._var_inds[1]] = ygrid.ravel()
 
         for ax, obs in zip(self._ax_lst, self._obs_lst):
-            qs = self._qf.eval(obs[None], actions)
+            qs = self._q_function.eval(obs[None], actions)
 
             qs = qs.reshape(xgrid.shape)
 
