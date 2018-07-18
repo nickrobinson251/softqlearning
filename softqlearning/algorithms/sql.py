@@ -374,6 +374,6 @@ class SQL(RLAlgorithm):
             'policy': self.policy,
             'q_function': self.q_function,
             'env': self.env}
-        if self._save_full_snapshot:
+        if self._save_full_state:
             snapshot['replay_buffer'] = self.replay_buffer
         return snapshot
