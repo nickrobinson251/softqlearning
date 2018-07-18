@@ -4,14 +4,14 @@ from softqlearning.misc import Serializable
 
 
 class NNPolicy(Serializable):
-    def __init__(self, env_spec, obs_pl, action, scope_name=None):
+    def __init__(self, env, obs_pl, action, scope_name=None):
         Serializable.quick_init(self, locals())
 
         self._obs_pl = obs_pl
         self._action = action
         self._scope_name = (tf.get_variable_scope().name
                             if not scope_name else scope_name)
-        super(NNPolicy, self).__init__(env_spec)
+        super(NNPolicy, self).__init__(env)
 
     def get_action(self, observation):
         return self.get_actions(observation[None])[0], None

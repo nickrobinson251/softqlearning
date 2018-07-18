@@ -1,3 +1,4 @@
+import numpy as np
 import tensorflow as tf
 
 from softqlearning.misc import Serializable
@@ -10,14 +11,14 @@ class StochasticNNPolicy(NNPolicy, Serializable):
     """Stochastic neural network policy."""
 
     def __init__(self,
-                 env_spec,
+                 env,
                  hidden_layer_sizes,
                  squash=True,
                  name='policy'):
         Serializable.quick_init(self, locals())
 
-        self._action_dim = env_spec.action_space.flat_dim
-        self._observation_dim = env_spec.observation_space.flat_dim
+        self._action_dim = env.action_space.n
+        self._observation_dim = np.prod(env.observation_space.shape)
         self._layer_sizes = list(hidden_layer_sizes) + [self._action_dim]
         self._squash = squash
         self._name = name
@@ -30,7 +31,7 @@ class StochasticNNPolicy(NNPolicy, Serializable):
         self._actions = self.actions_for(self._observation_ph)
 
         super(StochasticNNPolicy, self).__init__(
-            env_spec, self._observation_ph, self._actions, self._name)
+            env, self._observation_ph, self._actions, self._name)
 
     def actions_for(self, observations, n_action_samples=1, reuse=False):
 

@@ -7,12 +7,12 @@ from softqlearning.misc import Serializable, tf_utils
 
 class NNVFunction(MLPFunction):
     def __init__(self,
-                 env_spec,
+                 env,
                  hidden_layer_sizes=(100, 100),
                  name='value_function'):
         Serializable.quick_init(self, locals())
 
-        self._Do = env_spec.observation_space.flat_dim
+        self._Do = np.prod(env.observation_space.shape)
         self._observations_ph = tf.placeholder(
             tf.float32, shape=[None, self._Do], name='observations')
 
@@ -31,13 +31,13 @@ class NNVFunction(MLPFunction):
 
 class NNQFunction(MLPFunction):
     def __init__(self,
-                 env_spec,
+                 env,
                  hidden_layer_sizes=(100, 100),
                  name='q_function'):
         Serializable.quick_init(self, locals())
 
-        self._Da = env_spec.action_space.flat_dim
-        self._Do = env_spec.observation_space.flat_dim
+        self._Da = env.action_space.n
+        self._Do = np.prod(env.observation_space.shape)
 
         self._observations_ph = tf.placeholder(
             tf.float32, shape=[None, self._Do], name='observations')
@@ -58,13 +58,13 @@ class NNQFunction(MLPFunction):
 
 
 class SumQFunction(Serializable):
-    def __init__(self, env_spec, q_functions):
+    def __init__(self, env, q_functions):
         Serializable.quick_init(self, locals())
 
         self.q_functions = q_functions
 
-        self._Da = env_spec.action_space.flat_dim
-        self._Do = env_spec.observation_space.flat_dim
+        self._Da = env.action_space.n
+        self._Do = np.prod(env.observation_space.shape)
 
         self._observations_ph = tf.placeholder(
             tf.float32, shape=[None, self._Do], name='observations')
