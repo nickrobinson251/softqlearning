@@ -63,8 +63,7 @@ class MLPFunction(Parameterized, Serializable):
         return out[..., 0]
 
     def _eval(self, inputs):
-        feeds = {pl: val for pl, val in zip(self._inputs, inputs)}
-
+        feeds = dict(zip(self._inputs, inputs))
         return tf_utils.get_default_session().run(self._output, feeds)
 
     def get_params_internal(self, scope='', **tags):
