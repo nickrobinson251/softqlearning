@@ -89,16 +89,21 @@ class Sampler(object):
         return self.replay_buffer.random_batch(self._batch_size)
 
     def terminate(self):
+        try:
+            self.env.stop_logging_video()
+        except AttributeError:
+            pass
         self.env.terminate()
 
     def log_diagnostics(self):
-        logger.record_tabular('replay_buffer-size', self.replay_buffer.size)
+        logger.record_tabular('replay-buffer-size', len(self.replay_buffer))
+        logger.record_tabular('replay-buffer-limit', self.replay_buffer.size)
 
 
 class SimpleSampler(Sampler):
+
     def __init__(self, **kwargs):
         super(SimpleSampler, self).__init__(**kwargs)
-
         self._episode_length = 0
         self._episode_return = 0
         self._last_episode_return = 0
@@ -128,7 +133,7 @@ class SimpleSampler(Sampler):
             self._current_observation = self.env.reset()
             self._episode_length = 0
             self._max_episode_return = max(self._max_episode_return,
-                                        self._episode_return)
+                                           self._episode_return)
             self._last_episode_return = self._episode_return
 
             self._episode_return = 0
@@ -143,6 +148,53 @@ class SimpleSampler(Sampler):
         logger.record_tabular('last-episode-return', self._last_episode_return)
         logger.record_tabular('episodes', self._n_episodes)
         logger.record_tabular('total-samples', self._total_samples)
+
+
+class SkipSampler(SimpleSampler):
+
+    def __init__(self, skip_rate=20,  **kwargs):
+        super(SimpleSampler, self).__init__(**kwargs)
+        self.skip_rate = skip_rate
+        self._episode_length = 0
+        self._episode_return = 0
+        self._last_episode_return = 0
+        self._max_episode_return = -np.inf
+        self._n_episodes = 0
+        self._current_observation = None
+        self._total_samples = 0
+
+    def sample(self):
+        if self._current_observation is None:
+            self._current_observation = self.env.reset()
+
+        reward = 0
+        for _ in range(self.skip_rate):
+            action, _ = self.policy.get_action(self._current_observation)
+            next_observation, reward_now, done, info = self.env.step(action)
+            reward += reward_now
+        self._episode_length += 1
+        self._episode_return += reward
+        self._total_samples += 1
+
+        self.replay_buffer.add_sample(
+            observation=self._current_observation,
+            action=action,
+            reward=reward,
+            done=done,
+            next_observation=next_observation)
+
+        if done or self._episode_length >= self._max_episode_length:
+            self._current_observation = self.env.reset()
+            self._episode_length = 0
+            self._max_episode_return = max(self._max_episode_return,
+                                           self._episode_return)
+            self._last_episode_return = self._episode_return
+
+            self._episode_return = 0
+            self._n_episodes += 1
+
+        else:
+            self._current_observation = next_observation
 
 
 class DummySampler(Sampler):
