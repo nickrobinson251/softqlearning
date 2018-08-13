@@ -354,8 +354,8 @@ class SQL(RLAlgorithm):
         q_function, bellman_residual = self._sess.run(
             [self._q_values, self._bellman_residual], feeds)
 
-        logger.record_tabular('q_function-avg', np.mean(q_function))
-        logger.record_tabular('q_function-std', np.std(q_function))
+        logger.record_tabular('q-function-avg', np.mean(q_function))
+        logger.record_tabular('q-function-std', np.std(q_function))
         logger.record_tabular('mean-sq-bellman-error', bellman_residual)
 
         self.policy.log_diagnostics(batch)
