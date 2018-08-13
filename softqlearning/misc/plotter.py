@@ -3,29 +3,41 @@ import matplotlib.pyplot as plt
 
 
 class QFPolicyPlotter:
-    def __init__(self, q_function, policy, obs_lst, default_action, n_samples):
+    def __init__(
+            self,
+            q_function,
+            policy,
+            observations,
+            default_action,
+            n_samples):
         self._q_function = q_function
         self._policy = policy
-        self._obs_lst = obs_lst
+        self._observations = observations
         self._default_action = default_action
         self._n_samples = n_samples
 
         self._var_inds = np.where(np.isnan(default_action))[0]
-        assert len(self._var_inds) == 2
+        # assert len(self._var_inds) == 2
 
-        n_plots = len(obs_lst)
-
-        x_size = 5 * n_plots
+        n_plots = len(observations)
         y_size = 5
+        x_size = y_size * n_plots
 
-        fig = plt.figure(figsize=(x_size, y_size))
-        self._ax_lst = []
-        for i in range(n_plots):
-            ax = fig.add_subplot(100 + n_plots * 10 + i + 1)
+        # fig = plt.figure(figsize=(x_size, y_size))
+        # self._axes = []
+        # for i in range(1, n_plots+1):
+        #     ax = fig.add_subplot(1, n_plots, i)
+        #     ax.set_xlim((-1, 1))
+        #     ax.set_ylim((-1, 1))
+        #     ax.grid(True)
+        #     self._axes.append(ax)
+
+        fig, self._axes = plt.subplots(
+            nrows=1, ncols=n_plots, figsize=(x_size, y_size))
+        for ax in self._axes:
             ax.set_xlim((-1, 1))
             ax.set_ylim((-1, 1))
             ax.grid(True)
-            self._ax_lst.append(ax)
 
         self._line_objects = list()
 
@@ -33,15 +45,13 @@ class QFPolicyPlotter:
         # noinspection PyArgumentList
         [h.remove() for h in self._line_objects]
         self._line_objects = list()
-
         self._plot_level_curves()
         self._plot_action_samples()
-
         plt.draw()
         plt.pause(0.001)
 
     def _plot_level_curves(self):
-        # Create mesh grid.
+        # Create mesh grid
         xs = np.linspace(-1, 1, 50)
         ys = np.linspace(-1, 1, 50)
         xgrid, ygrid = np.meshgrid(xs, ys)
@@ -53,18 +63,18 @@ class QFPolicyPlotter:
         actions[:, self._var_inds[0]] = xgrid.ravel()
         actions[:, self._var_inds[1]] = ygrid.ravel()
 
-        for ax, obs in zip(self._ax_lst, self._obs_lst):
+        for ax, obs in zip(self._axes, self._observations):
             qs = self._q_function.eval(obs[None], actions)
-
             qs = qs.reshape(xgrid.shape)
 
-            cs = ax.contour(xgrid, ygrid, qs, 20)
-            self._line_objects += cs.collections
+            n_intervals = 20
+            contour_set = ax.contour(xgrid, ygrid, qs, n_intervals)
+            self._line_objects += contour_set.collections
             self._line_objects += ax.clabel(
-                cs, inline=1, fontsize=10, fmt='%.2f')
+                contour_set, inline=True, fontsize=10, fmt='%.2f')
 
     def _plot_action_samples(self):
-        for ax, obs in zip(self._ax_lst, self._obs_lst):
+        for ax, obs in zip(self._axes, self._observations):
             actions = self._policy.get_actions(
                 np.ones((self._n_samples, 1)) * obs[None, :])
             x, y = actions[:, 0], actions[:, 1]
