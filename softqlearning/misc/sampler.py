@@ -89,10 +89,6 @@ class Sampler(object):
         return self.replay_buffer.random_batch(self._batch_size)
 
     def terminate(self):
-        try:
-            self.env.stop_logging_video()
-        except AttributeError:
-            pass
         self.env.terminate()
 
     def log_diagnostics(self):
@@ -166,6 +162,13 @@ class SkipSampler(SimpleSampler):
     def sample(self):
         if self._current_observation is None:
             self._current_observation = self.env.reset()
+
+        # TODO:replace this hack for valkyrie env
+        try:
+            action, _ = self.policy.get_action(self._current_observation)
+            self.env.reset_joint_interpolation(action)
+        except AttributeError:
+            pass
 
         reward = 0
         for _ in range(self.skip_rate):

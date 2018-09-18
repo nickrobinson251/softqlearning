@@ -149,6 +149,9 @@ class SQL(RLAlgorithm):
         self._create_td_update()
 
         self._sess.run(tf.global_variables_initializer())
+        # self._sess.run(tf.local_variables_initializer())
+        print(self._sess.run(tf.report_uninitialized_variables()))
+        # self._sess.graph.finalize()
 
         if use_saved_qf:
             saved_qf_params = q_function.get_param_values()
@@ -191,7 +194,8 @@ class SQL(RLAlgorithm):
                 maxval=1)
             q_value_targets = self.q_function.output_for(
                 observations=self._next_observations_ph[:, None, :],
-                actions=target_actions)
+                actions=target_actions,
+                reuse=tf.AUTO_REUSE)
             assert_shape(q_value_targets, [None, self._value_n_particles])
 
         self._q_values = self.q_function.output_for(
@@ -267,7 +271,7 @@ class SQL(RLAlgorithm):
         kernel_dict = self._kernel_fn(xs=fixed_actions, ys=updated_actions)
 
         # Kernel function in Equation 13:
-        kappa = tf.expand_dims(kernel_dict["output"], dim=3)
+        kappa = tf.expand_dims(kernel_dict["output"], axis=3)
         assert_shape(kappa, [None, n_fixed_actions, n_updated_actions, 1])
 
         # Stein Variational Gradient in Equation 13:
@@ -357,6 +361,7 @@ class SQL(RLAlgorithm):
         logger.record_tabular('q-function-avg', np.mean(q_function))
         logger.record_tabular('q-function-std', np.std(q_function))
         logger.record_tabular('mean-sq-bellman-error', bellman_residual)
+        logger.record_q_function(q_function)
 
         self.policy.log_diagnostics(batch)
         if self.plotter:

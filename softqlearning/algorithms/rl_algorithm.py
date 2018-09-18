@@ -107,8 +107,11 @@ class RLAlgorithm:
                 logger.record_tabular('time-total', time_total)
                 logger.record_tabular('epoch', epoch)
 
+                logger.record_time(time_total, time_sample)
+
                 self.sampler.log_diagnostics()
 
+                logger.save_stats()
                 logger.dump_tabular(with_prefix=False)
                 logger.pop_prefix()
 
@@ -136,6 +139,8 @@ class RLAlgorithm:
         logger.record_tabular('episode-length-min', np.min(episode_lengths))
         logger.record_tabular('episode-length-max', np.max(episode_lengths))
         logger.record_tabular('episode-length-std', np.std(episode_lengths))
+
+        logger.record_returns(total_returns)
 
         evaluation_env.log_diagnostics(episodes)
         if self._eval_render:

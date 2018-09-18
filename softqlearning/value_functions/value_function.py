@@ -8,14 +8,14 @@ from softqlearning.misc import Serializable, tf_utils
 class NNVFunction(MLPFunction):
     def __init__(self,
                  env,
-                 hidden_layer_sizes=(100, 100),
+                 hidden_layer_sizes=(128, 128),
                  name='value_function'):
-        Serializable.quick_init(self, locals())
 
         self._Do = np.prod(env.observation_space.shape)
         self._observations_ph = tf.placeholder(
             tf.float32, shape=[None, self._Do], name='observations')
 
+        Serializable.quick_init(self, locals())
         super(NNVFunction, self).__init__(
             inputs=(self._observations_ph, ),
             name=name,
@@ -32,9 +32,8 @@ class NNVFunction(MLPFunction):
 class NNQFunction(MLPFunction):
     def __init__(self,
                  env,
-                 hidden_layer_sizes=(100, 100),
+                 hidden_layer_sizes=(128, 128),
                  name='q_function'):
-        Serializable.quick_init(self, locals())
 
         self._Da = env.action_space.n
         self._Do = np.prod(env.observation_space.shape)
@@ -44,6 +43,7 @@ class NNQFunction(MLPFunction):
         self._actions_ph = tf.placeholder(
             tf.float32, shape=[None, self._Da], name='actions')
 
+        Serializable.quick_init(self, locals())
         super(NNQFunction, self).__init__(
             inputs=(self._observations_ph, self._actions_ph),
             name=name,
@@ -59,7 +59,6 @@ class NNQFunction(MLPFunction):
 
 class SumQFunction(Serializable):
     def __init__(self, env, q_functions):
-        Serializable.quick_init(self, locals())
 
         self.q_functions = q_functions
 
@@ -73,6 +72,7 @@ class SumQFunction(Serializable):
 
         self._output = self.output_for(
             self._observations_ph, self._actions_ph, reuse=True)
+        Serializable.quick_init(self, locals())
 
     def output_for(self, observations, actions, reuse=False):
         outputs = [

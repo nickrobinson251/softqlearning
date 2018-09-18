@@ -8,7 +8,8 @@ def get_default_session():
 def create_session(**kwargs):
     """ Create new tensorflow session with given configuration. """
     if "config" not in kwargs:
-        kwargs["config"] = get_configuration()
+        # kwargs["config"] = get_configuration()
+        kwargs["config"] = None
     return tf.InteractiveSession(**kwargs)
 
 

@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 import os.path as osp
+import numpy as np
 import sys
 import datetime
 import dateutil.tz
@@ -15,6 +16,17 @@ _tabular_prefixes = []
 _tabular_prefix_str = ''
 
 _tabular = []
+
+_min_returns = []
+_max_returns = []
+_avg_returns = []
+_std_returns = []
+
+_time_total = []
+_time_sample = []
+
+_qf_avg = []
+_qf_std = []
 
 _text_fds = {}
 _tabular_fds = {}
@@ -115,6 +127,23 @@ def record_tabular(key, val):
     _tabular.append((_tabular_prefix_str + str(key), str(val)))
 
 
+def record_returns(returns):
+    _min_returns.append(np.min(returns))
+    _max_returns.append(np.max(returns))
+    _avg_returns.append(np.mean(returns))
+    _std_returns.append(np.std(returns))
+
+
+def record_time(total, sample):
+    _time_total.append(total)
+    _time_sample.append(sample)
+
+
+def record_q_function(q_function):
+    _qf_avg.append(np.mean(q_function))
+    _qf_std.append(np.std(q_function))
+
+
 def push_tabular_prefix(key):
     _tabular_prefixes.append(key)
     global _tabular_prefix_str
@@ -194,6 +223,35 @@ def pop_prefix():
     del _prefixes[-1]
     global _prefix_str
     _prefix_str = ''.join(_prefixes)
+
+
+def save_stats():
+    save_returns()
+    save_q_function()
+    save_time()
+
+
+def save_returns():
+    if _snapshot_dir:
+        file_name = osp.join(_snapshot_dir, 'returns_')
+        np.save(file_name + "min", _min_returns)
+        np.save(file_name + "max", _max_returns)
+        np.save(file_name + "avg", _avg_returns)
+        np.save(file_name + "std", _std_returns)
+
+
+def save_q_function():
+    if _snapshot_dir:
+        file_name = osp.join(_snapshot_dir, 'qf_')
+        np.save(file_name + "avg", _qf_avg)
+        np.save(file_name + "std", _qf_std)
+
+
+def save_time():
+    if _snapshot_dir:
+        file_name = osp.join(_snapshot_dir, 'time_')
+        np.save(file_name + "sample", _time_sample)
+        np.save(file_name + "total", _time_total)
 
 
 def save_itr_params(itr, params):

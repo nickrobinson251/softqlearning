@@ -1,0 +1,6 @@
+README.md
+softqlearning.egg-info/PKG-INFO
+softqlearning.egg-info/SOURCES.txt
+softqlearning.egg-info/dependency_links.txt
+softqlearning.egg-info/requires.txt
+softqlearning.egg-info/top_level.txt

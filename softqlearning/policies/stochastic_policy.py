@@ -12,13 +12,14 @@ class StochasticNNPolicy(NNPolicy, Serializable):
 
     def __init__(self,
                  env,
-                 hidden_layer_sizes,
+                 hidden_layer_sizes=(128, 128),
                  squash=True,
                  name='policy'):
         Serializable.quick_init(self, locals())
 
         self._action_dim = env.action_space.n
         self._observation_dim = np.prod(env.observation_space.shape)
+        self._hidden_layer_sizes = hidden_layer_sizes
         self._layer_sizes = list(hidden_layer_sizes) + [self._action_dim]
         self._squash = squash
         self._name = name
@@ -33,7 +34,8 @@ class StochasticNNPolicy(NNPolicy, Serializable):
         super(StochasticNNPolicy, self).__init__(
             env, self._observation_ph, self._actions, self._name)
 
-    def actions_for(self, observations, n_action_samples=1, reuse=False):
+    def actions_for(self, observations, n_action_samples=1,
+                    reuse=tf.AUTO_REUSE):
 
         n_state_samples = tf.shape(observations)[0]
 

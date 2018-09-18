@@ -24,7 +24,7 @@ def feedforward_net(inputs,
 
     out = 0
     for i, layer_size in enumerate(layer_sizes):
-        with tf.variable_scope('layer_{i}'.format(i=i)):
+        with tf.variable_scope('layer_{i}'.format(i=i), reuse=tf.AUTO_REUSE):
             if i == 0:
                 for j, input_tensor in enumerate(inputs):
                     out += linear(input_tensor, layer_size, j)
@@ -44,16 +44,17 @@ def feedforward_net(inputs,
 
 class MLPFunction(Parameterized, Serializable):
     def __init__(self, inputs, name, hidden_layer_sizes):
-        Parameterized.__init__(self)
         Serializable.quick_init(self, locals())
+        Parameterized.__init__(self)
 
         self._name = name
         self._inputs = inputs
-        self._layer_sizes = list(hidden_layer_sizes) + [1]
+        self._hidden_layer_sizes = hidden_layer_sizes
+        self._layer_sizes = list(self._hidden_layer_sizes) + [1]
 
         self._output = self._output_for(self._inputs)
 
-    def _output_for(self, inputs, reuse=False):
+    def _output_for(self, inputs, reuse=tf.AUTO_REUSE):
         with tf.variable_scope(self._name, reuse=reuse):
             out = feedforward_net(
                 inputs=inputs,
